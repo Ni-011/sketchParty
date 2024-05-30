@@ -2,7 +2,7 @@
 
 import { MutableRefObject, RefObject, useEffect, useRef } from "react";
 
-export function useDraw(): () => RefObject<HTMLCanvasElement> {
+export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
   interface mousePositionType {
     x: number;
     y: number;
@@ -21,7 +21,7 @@ export function useDraw(): () => RefObject<HTMLCanvasElement> {
       canvasRef.current?.getContext("2d");
 
     // when mouse is is held down, save the coordinates as initial position
-    const handleMouseDown: (e: MouseEvent) => void = (e: MouseEvent) => {
+    const handleMouseDown = (e: MouseEvent): void => {
       isDrawing.current = true;
       console.log(isDrawing.current);
       if (!ctx || !canvas) return;
@@ -34,7 +34,7 @@ export function useDraw(): () => RefObject<HTMLCanvasElement> {
     };
 
     // draw on the mouse coordinates
-    const draw: (e: MouseEvent) => void = (e: MouseEvent) => {
+    const draw = (e: MouseEvent): void => {
       if (!ctx || !canvas) return;
       const rect: DOMRect = canvas.getBoundingClientRect();
 
@@ -76,11 +76,11 @@ export function useDraw(): () => RefObject<HTMLCanvasElement> {
     };
 
     // when mouse up, quit drawing
-    const handleMouseUp: (e: MouseEvent) => void = (e: MouseEvent) => {
+    const handleMouseUp = (e: MouseEvent): void => {
       isDrawing.current = false;
     };
 
-    const handleMouseout: (e: MouseEvent) => void = (e: MouseEvent) => {
+    const handleMouseout = (e: MouseEvent): void => {
       isDrawing.current = false;
     };
 
