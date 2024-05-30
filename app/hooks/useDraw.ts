@@ -1,23 +1,26 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { MutableRefObject, RefObject, useEffect, useRef } from "react";
 
-export function useDraw() {
+export function useDraw(): () => RefObject<HTMLCanvasElement> {
   interface mousePositionType {
     x: number;
     y: number;
   }
 
   // Ref to the canvas element
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isDrawing = useRef<Boolean>(false);
-  const initialPosition = useRef<mousePositionType | null>(null);
+  const canvasRef: RefObject<HTMLCanvasElement> =
+    useRef<HTMLCanvasElement>(null);
+  const isDrawing: MutableRefObject<Boolean> = useRef<Boolean>(false);
+  const initialPosition: MutableRefObject<mousePositionType | null> =
+    useRef<mousePositionType | null>(null);
 
   useEffect(() => {
     // getting the 2d context of canvas to draw
     const ctx: CanvasRenderingContext2D | null | undefined =
       canvasRef.current?.getContext("2d");
 
+    // when mouse is is held down, save the coordinates as initial position
     const handleMouseDown: (e: MouseEvent) => void = (e: MouseEvent) => {
       isDrawing.current = true;
       console.log(isDrawing.current);
@@ -32,7 +35,6 @@ export function useDraw() {
 
     // draw on the mouse coordinates
     const draw: (e: MouseEvent) => void = (e: MouseEvent) => {
-      // current mouse position
       if (!ctx || !canvas) return;
       const rect: DOMRect = canvas.getBoundingClientRect();
 
@@ -44,6 +46,7 @@ export function useDraw() {
         return;
       }
 
+      // if mouse down, record the coordinates
       if (isDrawing.current == true) {
         const mousePosition: mousePositionType = {
           x: e.clientX - rect.left,
@@ -55,12 +58,14 @@ export function useDraw() {
         ctx.lineCap = "round";
         ctx.strokeStyle = "black";
 
+        // move canvas pointer to initial positions of mousedown and make line to current coordinates
         ctx.beginPath();
         ctx.moveTo(initialPosition.current.x, initialPosition.current.y);
         ctx.lineTo(mousePosition?.x ?? 0, mousePosition?.y ?? 0);
         ctx.stroke();
         ctx.beginPath();
 
+        // update the previous coordinates to current (to not make lines everywhere from first coordinate)
         initialPosition.current = {
           x: mousePosition?.x ?? 0,
           y: mousePosition?.y ?? 0,
@@ -70,22 +75,9 @@ export function useDraw() {
       }
     };
 
-    // compute the coordinated from positions
-    const computePositon: (e: MouseEvent) => mousePositionType | undefined = (
-      e: MouseEvent
-    ) => {
-      if (!canvas) return;
-
-      const rect: DOMRect = canvas.getBoundingClientRect();
-      const x: number = e.clientX - rect.left;
-      const y: number = e.clientY - rect.top;
-
-      return { x, y };
-    };
-
+    // when mouse up, quit drawing
     const handleMouseUp: (e: MouseEvent) => void = (e: MouseEvent) => {
       isDrawing.current = false;
-      console.log(isDrawing.current);
     };
 
     const handleMouseout: (e: MouseEvent) => void = (e: MouseEvent) => {
