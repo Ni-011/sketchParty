@@ -1,5 +1,7 @@
 "use client";
 
+import socket from "../components/SocketConnection";
+
 import { MutableRefObject, RefObject, useEffect, useRef } from "react";
 
 export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
@@ -33,7 +35,37 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
       };
     };
 
-    // draw on the mouse coordinates
+    // display other user's drawings
+    socket.on("otherUsersDraw", (allCoordinates) => {
+      if (!ctx || !canvas) return;
+      const rect: DOMRect = canvas.getBoundingClientRect();
+
+      /// canvas properties and drawing
+      ctx.lineWidth = 5;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "black";
+
+      // move canvas pointer to initial positions of mousedown and make line to current coordinates
+      ctx.beginPath();
+      ctx.moveTo(
+        allCoordinates.initialPosition.current.x,
+        allCoordinates.initialPosition.current.y
+      );
+      ctx.lineTo(
+        allCoordinates.mousePosition.x,
+        allCoordinates.mousePosition.y
+      );
+      ctx.stroke();
+      ctx.beginPath();
+
+      // update the previous coordinates to current (to not make lines everywhere from first coordinate)
+      allCoordinates.initialPosition.current = {
+        x: allCoordinates.mousePosition.x,
+        y: allCoordinates.mousePosition.y,
+      };
+    });
+
+    // draw on the mouse coordinates, record and draw coordinates
     const draw = (e: MouseEvent): void => {
       if (!ctx || !canvas) return;
       const rect: DOMRect = canvas.getBoundingClientRect();
@@ -52,6 +84,13 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
           x: e.clientX - rect.left,
           y: e.clientY - rect.top,
         };
+
+        const allCoordinates = {
+          initialPosition,
+          mousePosition,
+        };
+
+        socket.emit("draw", allCoordinates);
 
         /// canvas properties and drawing
         ctx.lineWidth = 5;
