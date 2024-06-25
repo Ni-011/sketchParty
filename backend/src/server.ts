@@ -1,13 +1,25 @@
-import { Request, Response } from "express";
+import { Request, Response, Express } from "express";
 import { Socket } from "dgram";
 import express from "express";
 import { Server } from "socket.io";
-import { createServer } from "http";
+import { createServer, IncomingMessage, ServerResponse } from "http";
 import cors from "cors";
+import { MutableRefObject } from "react";
 
-const app: any = express();
-const port = 8000;
-const server: any = createServer(app);
+interface mousePositionType {
+  x: number;
+  y: number;
+}
+
+interface drawDataType {
+  initialPosition: MutableRefObject<mousePositionType | null>;
+  mousePosition: mousePositionType;
+  roomID: string;
+}
+
+const app: Express = express();
+const port: number = 8000;
+const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:3000",
@@ -26,23 +38,24 @@ app.get("/", (req: Request, res: Response) => {
 const connections: any[] = [];
 
 io.on("connection", (socket: any) => {
-  connections.push(socket);
-  console.log(`${socket.id} has connected`);
+  // Joing the room
+  socket.on("joinRequest", (room: string) => {
+    socket.join(room);
+    socket.emit("RoomJoined", true);
+    console.log(`a user has joined the room roomID: ${room}`);
+  });
 
-  socket.on("draw", (data: any) => {
-    connections.forEach((connection: any) => {
-      if (connection.id !== socket.id) {
-        connection.emit("otherUsersDraw", data);
-      }
-    });
+  socket.on("draw", (data: drawDataType) => {
+    socket.to(data.roomID).emit("otherUsersDraw", data);
   });
 
   socket.on("disconnect", (reason: any) => {
-    for (let i = 0; i < connections.length; i++) {
-      if (connections[i].id !== socket.id) {
-        console.log(`${socket.id} has disconnected`);
-      }
-    }
+    console.log(`a user has disconnected`);
+  });
+
+  socket.on("close", (roomID: any) => {
+    console.log(`a user has closed the room`);
+    socket.leave(roomID);
   });
 });
 

@@ -1,13 +1,23 @@
 "use client";
 
+import { useRecoilValue } from "recoil";
 import socket from "../components/SocketConnection";
 
 import { MutableRefObject, RefObject, useEffect, useRef } from "react";
+import { roomIDAtom } from "../Atoms/atoms";
 
 export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
+  const roomID = useRecoilValue(roomIDAtom);
+
   interface mousePositionType {
     x: number;
     y: number;
+  }
+
+  interface totalDrawDataType {
+    initialPosition: MutableRefObject<mousePositionType | null>;
+    mousePosition: mousePositionType;
+    roomID: string;
   }
 
   // Ref to the canvas element
@@ -85,12 +95,13 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
           y: e.clientY - rect.top,
         };
 
-        const allCoordinates = {
+        const DrawData: totalDrawDataType = {
           initialPosition,
           mousePosition,
+          roomID,
         };
 
-        socket.emit("draw", allCoordinates);
+        socket.emit("draw", DrawData);
 
         /// canvas properties and drawing
         ctx.lineWidth = 5;

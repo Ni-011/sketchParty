@@ -1,22 +1,66 @@
 "use client";
-import React, { FC } from "react";
+import React, { FC, useState } from "react";
 import { useDraw } from "./hooks/useDraw";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { UUID } from "crypto";
+import { uuidv4 } from "uuidv7";
+import socket from "./components/SocketConnection";
+import { useRouter } from "next/navigation";
+import { useRecoilState } from "recoil";
+import { roomIDAtom } from "./Atoms/atoms";
 
 interface pageProps {}
 
 const page: FC<pageProps> = ({}) => {
-  // accessing the real dom element with a custom hook
-  const { canvasRef } = useDraw();
+  const router = useRouter();
+
+  const [UUID, setUUID] = useState<String>();
+  const [roomID, setRoomID] = useRecoilState(roomIDAtom);
+
+  const computeUUID = (): void => {
+    setUUID(uuidv4());
+  };
+
+  // when join is clicked, send request to server to join the room
+  const JoinRoom = (): void => {
+    socket.emit("joinRequest", roomID);
+  };
+
+  const handleInput = (e: any) => {
+    setRoomID(e.target.value);
+  };
+
+  // if server sends succesful response, redirect to whiteboard
+  socket.on("RoomJoined", (success: boolean) => {
+    if (success) {
+      router.push("/whiteBoard");
+    }
+  });
 
   return (
-    <div className="flex justify-center items-center w-screen h-screen bg-white">
-      {/* create a canvas give refference to canvasRef */}
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={800}
-        className="border-black border-5"
-      />
+    // room join and generate id buttons
+    <div className="flex flex-col items-center h-screen p-10">
+      <div className="flex w-full max-w-md items-center space-x-2 mt-auto">
+        <Input onChange={handleInput} type="text" placeholder="Enter Room Id" />
+        <Button
+          onClick={JoinRoom}
+          className="h-[55px] px-10 text-xl"
+          type="submit"
+        >
+          Join
+        </Button>
+      </div>
+      <div className="flex w-full max-w-md items-center space-x-2 mt-auto">
+        <Button
+          onClick={computeUUID}
+          className="h-[55px] px-10 text-xl"
+          type="submit"
+        >
+          Generate ID
+        </Button>
+        <p className="text-xl">{UUID}</p>
+      </div>
     </div>
   );
 };
