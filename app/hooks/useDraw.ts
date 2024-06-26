@@ -46,7 +46,11 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     };
 
     // display other user's drawings
-    socket.on("otherUsersDraw", (allCoordinates) => {
+    socket.on("otherUsersDraw", (allCoordinates: any) => {
+      console.log(
+        "other user's coordinates: " + allCoordinates.initialPosition.current
+      );
+      console.log("other user's coordinates: " + allCoordinates.mousePosition);
       if (!ctx || !canvas) return;
       const rect: DOMRect = canvas.getBoundingClientRect();
 
@@ -73,6 +77,14 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
         x: allCoordinates.mousePosition.x,
         y: allCoordinates.mousePosition.y,
       };
+
+      console.log("other user's drawing rendering");
+    });
+
+    socket.on("closing", (closing) => {
+      console.log("closing: " + closing);
+      console.log("closing the room");
+      socket.removeAllListeners("otherUsersDraw");
     });
 
     // draw on the mouse coordinates, record and draw coordinates
@@ -103,6 +115,9 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
 
         socket.emit("draw", DrawData);
 
+        console.log("user: " + DrawData.initialPosition.current);
+        console.log("user: " + DrawData.mousePosition);
+
         /// canvas properties and drawing
         ctx.lineWidth = 5;
         ctx.lineCap = "round";
@@ -120,6 +135,7 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
           x: mousePosition?.x ?? 0,
           y: mousePosition?.y ?? 0,
         };
+        console.log("drawing for this user");
       } else {
         return;
       }
@@ -150,6 +166,10 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
       canvas?.addEventListener("mousemove", draw);
       canvas?.addEventListener("mouseup", handleMouseUp);
       canvas?.addEventListener("mouseout", handleMouseout);
+
+      // important!!
+      // wasted a whole day to figure out why other user's drawings were dotted on rejoining room
+      socket.off("otherUsersDraw");
     };
   }, []);
 

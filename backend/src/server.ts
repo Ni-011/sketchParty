@@ -38,6 +38,7 @@ app.get("/", (req: Request, res: Response) => {
 const connections: any[] = [];
 
 io.on("connection", (socket: any) => {
+  console.log("a user has connected");
   // Joing the room
   socket.on("joinRequest", (room: string) => {
     socket.join(room);
@@ -46,16 +47,19 @@ io.on("connection", (socket: any) => {
   });
 
   socket.on("draw", (data: drawDataType) => {
+    console.log("drawing data sent to all rooms");
     socket.to(data.roomID).emit("otherUsersDraw", data);
+  });
+
+  socket.on("close", (roomID: any) => {
+    socket.to(socket.id).emit("closing", true);
+    console.log("Closing request sent to FE");
+    socket.leave(roomID);
+    console.log(`a user has closed the room roomID: ${roomID}`);
   });
 
   socket.on("disconnect", (reason: any) => {
     console.log(`a user has disconnected`);
-  });
-
-  socket.on("close", (roomID: any) => {
-    console.log(`a user has closed the room`);
-    socket.leave(roomID);
   });
 });
 
