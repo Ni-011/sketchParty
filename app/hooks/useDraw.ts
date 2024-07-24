@@ -5,6 +5,7 @@ import socket from "../components/SocketConnection";
 
 import { MutableRefObject, RefObject, useEffect, useRef } from "react";
 import { roomIDAtom } from "../Atoms/atoms";
+import rough from "roughjs";
 
 export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
   const roomID = useRecoilValue(roomIDAtom);
@@ -28,6 +29,15 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     useRef<mousePositionType | null>(null);
 
   useEffect(() => {
+    // using roughjs for drawing shapes
+    if (!canvasRef.current) return;
+    // getting canvas
+    const roughCanvas = rough.canvas(canvasRef.current);
+    // creating generator and defining shapes
+    const generator = rough.generator();
+    const rectangle = generator.rectangle(10, 10, 100, 100);
+    roughCanvas.draw(rectangle);
+
     // getting the 2d context of canvas to draw
     const ctx: CanvasRenderingContext2D | null | undefined =
       canvasRef.current?.getContext("2d");

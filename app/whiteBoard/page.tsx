@@ -34,8 +34,8 @@ const page = () => {
       {/* create a canvas give refference to canvasRef */}
       <canvas
         ref={canvasRef}
-        width={800}
-        height={800}
+        width={window.innerWidth}
+        height={window.innerHeight}
         className="border-black border-5"
       />
     </div>
