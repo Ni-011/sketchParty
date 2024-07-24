@@ -21,6 +21,10 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     roomID: string;
   }
 
+  const drawType: String = "Line";
+
+  const Lines: any[] = [];
+
   // Ref to the canvas element
   const canvasRef: RefObject<HTMLCanvasElement> =
     useRef<HTMLCanvasElement>(null);
@@ -29,6 +33,11 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     useRef<mousePositionType | null>(null);
 
   useEffect(() => {
+    // canvas and rect
+    const canvas: HTMLCanvasElement | null = canvasRef.current;
+    if (!canvas) return;
+    const rect: DOMRect = canvas.getBoundingClientRect();
+
     // using roughjs for drawing shapes
     if (!canvasRef.current) return;
     // getting canvas
@@ -36,7 +45,7 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     // creating generator and defining shapes
     const generator = rough.generator();
     const rectangle = generator.rectangle(10, 10, 100, 100);
-    roughCanvas.draw(rectangle);
+    const line = generator.line(10, 10, 100, 100);
 
     // getting the 2d context of canvas to draw
     const ctx: CanvasRenderingContext2D | null | undefined =
@@ -100,7 +109,6 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     // draw on the mouse coordinates, record and draw coordinates
     const draw = (e: MouseEvent): void => {
       if (!ctx || !canvas) return;
-      const rect: DOMRect = canvas.getBoundingClientRect();
 
       if (
         !isDrawing ||
@@ -123,44 +131,81 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
           roomID,
         };
 
-        socket.emit("draw", DrawData);
+        if (drawType === "Free") {
+          socket.emit("draw", DrawData);
 
-        console.log("user: " + DrawData.initialPosition.current);
-        console.log("user: " + DrawData.mousePosition);
+          /// canvas properties and drawing
+          ctx.lineWidth = 5;
+          ctx.lineCap = "round";
+          ctx.strokeStyle = "black";
 
-        /// canvas properties and drawing
-        ctx.lineWidth = 5;
-        ctx.lineCap = "round";
-        ctx.strokeStyle = "black";
+          // move canvas pointer to initial positions of mousedown and make line to current coordinates
+          ctx.beginPath();
+          ctx.moveTo(initialPosition.current.x, initialPosition.current.y);
+          ctx.lineTo(mousePosition?.x ?? 0, mousePosition?.y ?? 0);
+          ctx.stroke();
+          ctx.beginPath();
 
-        // move canvas pointer to initial positions of mousedown and make line to current coordinates
-        ctx.beginPath();
-        ctx.moveTo(initialPosition.current.x, initialPosition.current.y);
-        ctx.lineTo(mousePosition?.x ?? 0, mousePosition?.y ?? 0);
-        ctx.stroke();
-        ctx.beginPath();
-
-        // update the previous coordinates to current (to not make lines everywhere from first coordinate)
-        initialPosition.current = {
-          x: mousePosition?.x ?? 0,
-          y: mousePosition?.y ?? 0,
-        };
-        console.log("drawing for this user");
-      } else {
-        return;
+          // update the previous coordinates to current (to not make lines everywhere from first coordinate)
+          initialPosition.current = {
+            x: mousePosition?.x ?? 0,
+            y: mousePosition?.y ?? 0,
+          };
+          console.log("drawing for this user");
+        } else if (drawType === "Line") {
+          // clear canvas
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          // draw all lines
+          Lines.forEach((line) => {
+            roughCanvas.draw(line);
+          });
+          // draw the current line
+          const line = generator.line(
+            initialPosition.current.x,
+            initialPosition.current.y,
+            mousePosition.x,
+            mousePosition.y
+          );
+          roughCanvas.draw(line);
+        } else {
+          return;
+        }
       }
     };
 
     // when mouse up, quit drawing
     const handleMouseUp = (e: MouseEvent): void => {
+      if (drawType == "Line") {
+        const endCoordinates = {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        };
+
+        if (initialPosition.current == null) return;
+
+        const newLine = generator.line(
+          initialPosition.current.x,
+          initialPosition.current.y,
+          endCoordinates.x,
+          endCoordinates.y
+        );
+
+        Lines.push(newLine);
+
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+
+        //draw all lines
+        Lines.forEach((line) => {
+          roughCanvas.draw(line);
+        });
+      }
+
       isDrawing.current = false;
     };
 
     const handleMouseout = (e: MouseEvent): void => {
       isDrawing.current = false;
     };
-
-    const canvas: HTMLCanvasElement | null = canvasRef.current;
 
     if (canvas) {
       // adding event listener to track mouse movements and draw
