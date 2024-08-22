@@ -6,6 +6,7 @@ import socket from "../components/SocketConnection";
 import { MutableRefObject, RefObject, useEffect, useRef } from "react";
 import { roomIDAtom } from "../Atoms/atoms";
 import rough from "roughjs";
+import { init } from "next/dist/compiled/webpack/webpack";
 
 export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
   const roomID = useRecoilValue(roomIDAtom);
@@ -21,7 +22,7 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     roomID: string;
   }
 
-  const drawType: String = "Line";
+  const drawType: String = "Rectangle";
 
   const Lines: any[] = [];
 
@@ -44,8 +45,6 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     const roughCanvas = rough.canvas(canvasRef.current);
     // creating generator and defining shapes
     const generator = rough.generator();
-    const rectangle = generator.rectangle(10, 10, 100, 100);
-    const line = generator.line(10, 10, 100, 100);
 
     // getting the 2d context of canvas to draw
     const ctx: CanvasRenderingContext2D | null | undefined =
@@ -167,6 +166,21 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
             mousePosition.y
           );
           roughCanvas.draw(line);
+        } else if (drawType === "Rectangle") {
+          // clear canvas
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          // draw all rectangles
+          Lines.forEach((rectangle) => {
+            roughCanvas.draw(rectangle);
+          });
+          // draw the current line
+          const rectangle = generator.rectangle(
+            initialPosition.current.x,
+            initialPosition.current.y,
+            mousePosition.x - initialPosition.current.x,
+            mousePosition.y - initialPosition.current.y
+          );
+          roughCanvas.draw(rectangle);
         } else {
           return;
         }
@@ -176,6 +190,7 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     // when mouse up, quit drawing
     const handleMouseUp = (e: MouseEvent): void => {
       if (drawType == "Line") {
+        // save the coordinates as end position where mouse is released
         const endCoordinates = {
           x: e.clientX - rect.left,
           y: e.clientY - rect.top,
@@ -183,6 +198,7 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
 
         if (initialPosition.current == null) return;
 
+        // create a new line using the initial position and end position and add it to the array then refresh the canvas
         const newLine = generator.line(
           initialPosition.current.x,
           initialPosition.current.y,
@@ -197,6 +213,29 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
         //draw all lines
         Lines.forEach((line) => {
           roughCanvas.draw(line);
+        });
+      } else if (drawType == "Rectangle") {
+        const endCoordinates = {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        };
+
+        if (initialPosition.current == null) return;
+
+        const newRect = generator.rectangle(
+          initialPosition.current.x,
+          initialPosition.current.y,
+          endCoordinates.x - initialPosition.current.x,
+          endCoordinates.y - initialPosition.current.y
+        );
+
+        Lines.push(newRect);
+
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+
+        //draw all lines
+        Lines.forEach((rect) => {
+          roughCanvas.draw(rect);
         });
       }
 
