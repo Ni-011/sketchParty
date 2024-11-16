@@ -9,17 +9,19 @@ import socket from "./components/SocketConnection";
 import { useRouter } from "next/navigation";
 import { useRecoilState } from "recoil";
 import { roomIDAtom } from "./Atoms/atoms";
+import {Copytext} from "@/app/components/Copytext";
 
 interface pageProps {}
 
 const page: FC<pageProps> = ({}) => {
   const router = useRouter();
 
-  const [UUID, setUUID] = useState<String>();
+  const [UUID, setUUID] = useState<string>("");
   const [roomID, setRoomID] = useRecoilState(roomIDAtom);
 
   const computeUUID = (): void => {
-    setUUID(uuidv4());
+    const newUUID = String(uuidv4().substring(0, 8));
+    setUUID(newUUID);
   };
 
   // when join is clicked, send request to server to join the room
@@ -60,6 +62,7 @@ const page: FC<pageProps> = ({}) => {
           Generate ID
         </Button>
         <p className="text-xl">{UUID}</p>
+        <Copytext text={UUID} />
       </div>
     </div>
   );

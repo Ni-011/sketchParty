@@ -22,13 +22,13 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     roomID: string;
   }
 
-  const drawType: String = "Rectangle";
+  const drawType: String = "Free";
 
   const Lines: any[] = [];
 
   // Ref to the canvas element
   const canvasRef: RefObject<HTMLCanvasElement> =
-    useRef<HTMLCanvasElement>(null);
+    useRef<HTMLCanvasElement | null>(null);
   const isDrawing: MutableRefObject<Boolean> = useRef<Boolean>(false);
   const initialPosition: MutableRefObject<mousePositionType | null> =
     useRef<mousePositionType | null>(null);
