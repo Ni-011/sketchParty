@@ -1,14 +1,13 @@
 "use client";
 
-import { useRecoilValue } from "recoil";
+import {useRecoilValue} from "recoil";
 import socket from "../components/SocketConnection";
 
 import { MutableRefObject, RefObject, useEffect, useRef } from "react";
-import { roomIDAtom } from "../Atoms/atoms";
+import {drawModeAtom, roomIDAtom} from "../Atoms/atoms";
 import rough from "roughjs";
-import { init } from "next/dist/compiled/webpack/webpack";
 
-export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
+export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
   const roomID = useRecoilValue(roomIDAtom);
 
   interface mousePositionType {
@@ -21,8 +20,6 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     mousePosition: mousePositionType;
     roomID: string;
   }
-
-  const drawType: String = "Free";
 
   const Lines: any[] = [];
 
@@ -39,7 +36,7 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     if (!canvas) return;
     const rect: DOMRect = canvas.getBoundingClientRect();
 
-    // using roughjs for drawing shapes
+    // using rough.js for drawing shapes
     if (!canvasRef.current) return;
     // getting canvas
     const roughCanvas = rough.canvas(canvasRef.current);
@@ -50,10 +47,11 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
     const ctx: CanvasRenderingContext2D | null | undefined =
       canvasRef.current?.getContext("2d");
 
-    // when mouse is is held down, save the coordinates as initial position
+
+
+    // when mouse is held down, save the coordinates as initial position
     const handleMouseDown = (e: MouseEvent): void => {
       isDrawing.current = true;
-      console.log(isDrawing.current);
       if (!ctx || !canvas) return;
       const rect: DOMRect = canvas.getBoundingClientRect();
 
@@ -65,10 +63,7 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
 
     // display other user's drawings
     socket.on("otherUsersDraw", (allCoordinates: any) => {
-      console.log(
-        "other user's coordinates: " + allCoordinates.initialPosition.current
-      );
-      console.log("other user's coordinates: " + allCoordinates.mousePosition);
+
       if (!ctx || !canvas) return;
       const rect: DOMRect = canvas.getBoundingClientRect();
 
@@ -95,13 +90,9 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
         x: allCoordinates.mousePosition.x,
         y: allCoordinates.mousePosition.y,
       };
-
-      console.log("other user's drawing rendering");
     });
 
     socket.on("closing", (closing) => {
-      console.log("closing: " + closing);
-      console.log("closing the room");
       socket.removeAllListeners("otherUsersDraw");
     });
 
@@ -111,8 +102,8 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
 
       if (
         !isDrawing ||
-        initialPosition.current?.x == null ||
-        initialPosition.current?.y == null
+          initialPosition.current?.x == null ||
+          initialPosition.current?.y == null
       ) {
         return;
       }
@@ -130,74 +121,81 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
           roomID,
         };
 
-        if (drawType === "Free") {
-          socket.emit("draw", DrawData);
+        switch (drawType) {
+          case "free":
+            console.log("Free");
+            socket.emit("draw", DrawData);
 
-          /// canvas properties and drawing
-          ctx.lineWidth = 5;
-          ctx.lineCap = "round";
-          ctx.strokeStyle = "black";
+            /// canvas properties and drawing
+            ctx.lineWidth = 5;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = "black";
 
-          // move canvas pointer to initial positions of mousedown and make line to current coordinates
-          ctx.beginPath();
-          ctx.moveTo(initialPosition.current.x, initialPosition.current.y);
-          ctx.lineTo(mousePosition?.x ?? 0, mousePosition?.y ?? 0);
-          ctx.stroke();
-          ctx.beginPath();
+            // move canvas pointer to initial positions of mousedown and make line to current coordinates
+            ctx.beginPath();
+            ctx.moveTo(initialPosition.current.x, initialPosition.current.y);
+            ctx.lineTo(mousePosition?.x ?? 0, mousePosition?.y ?? 0);
+            ctx.stroke();
+            ctx.beginPath();
 
-          // update the previous coordinates to current (to not make lines everywhere from first coordinate)
-          initialPosition.current = {
-            x: mousePosition?.x ?? 0,
-            y: mousePosition?.y ?? 0,
-          };
-          console.log("drawing for this user");
-        } else if (drawType === "Line") {
-          // clear canvas
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          // draw all lines
-          Lines.forEach((line) => {
+            // update the previous coordinates to current (to not make lines everywhere from first coordinate)
+            initialPosition.current = {
+              x: mousePosition?.x ?? 0,
+              y: mousePosition?.y ?? 0,
+            };
+            break;
+          case "line":
+            console.log("Line");
+            // clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // draw all lines
+            Lines.forEach((line) => {
+              roughCanvas.draw(line);
+            });
+            // draw the current line
+            const line = generator.line(
+                initialPosition.current.x,
+                initialPosition.current.y,
+                mousePosition.x,
+                mousePosition.y
+            );
             roughCanvas.draw(line);
-          });
-          // draw the current line
-          const line = generator.line(
-            initialPosition.current.x,
-            initialPosition.current.y,
-            mousePosition.x,
-            mousePosition.y
-          );
-          roughCanvas.draw(line);
-        } else if (drawType === "Rectangle") {
-          // clear canvas
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          // draw all rectangles
-          Lines.forEach((rectangle) => {
+            break;
+
+          case "rectangle":
+            // clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // draw all rectangles
+            Lines.forEach((rectangle) => {
+              roughCanvas.draw(rectangle);
+            });
+            // draw the current line
+            const rectangle = generator.rectangle(
+                initialPosition.current.x,
+                initialPosition.current.y,
+                mousePosition.x - initialPosition.current.x,
+                mousePosition.y - initialPosition.current.y
+            );
             roughCanvas.draw(rectangle);
-          });
-          // draw the current line
-          const rectangle = generator.rectangle(
-            initialPosition.current.x,
-            initialPosition.current.y,
-            mousePosition.x - initialPosition.current.x,
-            mousePosition.y - initialPosition.current.y
-          );
-          roughCanvas.draw(rectangle);
-        } else {
-          return;
+            break;
+          default:
+            return;
         }
       }
     };
 
     // when mouse up, quit drawing
     const handleMouseUp = (e: MouseEvent): void => {
-      if (drawType == "Line") {
-        // save the coordinates as end position where mouse is released
-        const endCoordinates = {
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top,
-        };
+      if (!ctx || !canvas || !initialPosition.current) return;
 
-        if (initialPosition.current == null) return;
+      // save the coordinates as end position where mouse is released
+      const endCoordinates = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
 
+      switch (drawType) {
+        case "line":
         // create a new line using the initial position and end position and add it to the array then refresh the canvas
         const newLine = generator.line(
           initialPosition.current.x,
@@ -214,14 +212,9 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
         Lines.forEach((line) => {
           roughCanvas.draw(line);
         });
-      } else if (drawType == "Rectangle") {
-        const endCoordinates = {
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top,
-        };
+        break;
 
-        if (initialPosition.current == null) return;
-
+       case "rectangle":
         const newRect = generator.rectangle(
           initialPosition.current.x,
           initialPosition.current.y,
@@ -233,10 +226,11 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
 
         ctx?.clearRect(0, 0, canvas.width, canvas.height);
 
-        //draw all lines
+        //draw all rect
         Lines.forEach((rect) => {
           roughCanvas.draw(rect);
         });
+        break;
       }
 
       isDrawing.current = false;
@@ -246,26 +240,33 @@ export function useDraw(): { canvasRef: RefObject<HTMLCanvasElement> } {
       isDrawing.current = false;
     };
 
-    if (canvas) {
-      // adding event listener to track mouse movements and draw
-      canvas?.addEventListener("mousedown", handleMouseDown);
-      canvas?.addEventListener("mousemove", draw);
-      canvas?.addEventListener("mouseup", handleMouseUp);
-      canvas?.addEventListener("mouseout", handleMouseout);
+    const attachListeners = () => {
+      if (canvas) {
+        // adding event listener to track mouse movements and draw
+        canvas?.addEventListener("mousedown", handleMouseDown);
+        canvas?.addEventListener("mousemove", draw);
+        canvas?.addEventListener("mouseup", handleMouseUp);
+        canvas?.addEventListener("mouseout", handleMouseout);
+      }
     }
+
+    const detachListeners = () => {
+      canvas?.removeEventListener("mousedown", handleMouseDown);
+      canvas?.removeEventListener("mousemove", draw);
+      canvas?.removeEventListener("mouseup", handleMouseUp);
+      canvas?.removeEventListener("mouseout", handleMouseout);
+    }
+
+    attachListeners();
 
     // removing event listener to track mouse movements and draw
     return () => {
-      canvas?.addEventListener("mousedown", handleMouseDown);
-      canvas?.addEventListener("mousemove", draw);
-      canvas?.addEventListener("mouseup", handleMouseUp);
-      canvas?.addEventListener("mouseout", handleMouseout);
-
+        detachListeners()
       // important!!
       // wasted a whole day to figure out why other user's drawings were dotted on rejoining room
       socket.off("otherUsersDraw");
     };
-  }, []);
+  }, [drawType]);
 
   return { canvasRef };
 }

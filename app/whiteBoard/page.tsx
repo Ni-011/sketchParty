@@ -1,45 +1,71 @@
 "use client";
-import React from "react";
+import React, {useEffect, useState} from "react";
 import { useDraw } from "../hooks/useDraw";
-import { roomIDAtom } from "../Atoms/atoms";
-import { useRecoilValue } from "recoil";
+import {drawModeAtom, roomIDAtom} from "../Atoms/atoms";
+import {useRecoilState, useRecoilValue} from "recoil";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import socket from "../components/SocketConnection";
+import {Pen, Slash, RectangleHorizontal} from "lucide-react";
 
 const page = () => {
-  // accessing the real dom element with a custom hook
-  const { canvasRef } = useDraw();
-  const roomID = useRecoilValue(roomIDAtom);
+    // accessing the real dom element with a custom hook
+    const [drawType, setDrawType] = useState<string>("line");
+    const { canvasRef } = useDraw(drawType);
+    const roomID = useRecoilValue(roomIDAtom);
+    const router = useRouter();
+    const [canvasWidth, setWidth] = useState<number>(window.innerWidth);
+    const [canvasHeight, setHeight] = useState<number>(window.innerHeight);
 
-  const router = useRouter();
-
-  const handleClose = () => {
-    router.push("/");
+    const handleClose = () => {
+        router.push("/");
     socket.emit("close", roomID);
   };
 
-  return (
-    <div className="flex flex-col justify-center items-center w-screen h-screen bg-white p-10">
-      <nav className="flex w-full justify-between space-x-10 pt-10">
-        <button onClick={handleClose}>
-          <Image src="/close.svg" alt="close" width={40} height={30} />
-        </button>
-        <p>
-          <b className="text-xl">RoomID: </b>
-          {roomID}
-        </p>
-      </nav>
-      {/* create a canvas give refference to canvasRef */}
-      <canvas
-        ref={canvasRef}
-        width={window.innerWidth}
-        height={window.innerHeight}
-        className="border-black border-5"
-      />
-    </div>
-  );
+    return (
+        <div className="flex flex-col justify-center items-center w-screen h-screen bg-white p-10">
+            {/* "items-center" align items vertically */}
+            <nav className="flex w-full justify-between items-center space-x-10 mt-20 p-5">
+                <button onClick={handleClose}>
+                    <Image src="/close.svg" alt="close" width={30} height={30}/>
+                </button>
+                <div className="flex justify-between w-[30%]">
+                    <div onClick={() => {
+                        setDrawType("free")
+                        console.log("free")
+                    }} className="p-4 border-4 border-white hover:bg-gray-200 transition-colors duration-200 rounded-xl cursor-pointer">
+                    <Pen  />
+                    </div>
+
+                    <div onClick={() => {
+                        setDrawType("line")
+                        console.log("line")
+                    }} className="p-4 border-4 border-white hover:bg-gray-200 transition-colors duration-200 rounded-xl cursor-pointer">
+                    <Slash  />
+                    </div>
+
+                    <div onClick={() => {
+                        setDrawType("rectangle")
+                        console.log("rectangle")
+                    }} className="p-4 border-4 border-white hover:bg-gray-200 transition-colors duration-200 cursor-pointer rounded-xl">
+                    <RectangleHorizontal  />
+                    </div>
+                </div>
+                <p>
+                    <b className="text-xl">RoomID: </b>
+                    {roomID}
+                </p>
+            </nav>
+            {/* create a canvas give refference to canvasRef */}
+            <canvas
+                ref={canvasRef}
+                width={canvasWidth}
+                height={canvasHeight}
+                className="border-black border-5"
+            />
+        </div>
+    );
 };
 
 export default page;

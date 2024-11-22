@@ -5,4 +5,9 @@ const roomIDAtom = atom({
   default: "",
 });
 
-export { roomIDAtom };
+const drawModeAtom = atom ({
+  key: "drawMode",
+  default: "line"
+});
+
+export { roomIDAtom, drawModeAtom };
