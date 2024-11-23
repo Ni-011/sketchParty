@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import socket from "../components/SocketConnection";
-import {Pen, Slash, RectangleHorizontal} from "lucide-react";
+import {Pen, Slash, RectangleHorizontal, Circle} from "lucide-react";
+import {Copytext} from "@/app/components/Copytext";
 
 const page = () => {
     // accessing the real dom element with a custom hook
@@ -51,10 +52,18 @@ const page = () => {
                     }} className="p-4 border-4 border-white hover:bg-gray-200 transition-colors duration-200 cursor-pointer rounded-xl">
                     <RectangleHorizontal  />
                     </div>
+
+                    <div onClick={() => {
+                        setDrawType("circle")
+                        console.log("circle")
+                    }} className="p-4 border-4 border-white hover:bg-gray-200 transition-colors duration-200 cursor-pointer rounded-xl">
+                        <Circle />
+                    </div>
                 </div>
-                <p>
+                <p className="flex gap-2">
                     <b className="text-xl">RoomID: </b>
                     {roomID}
+                    <Copytext text={roomID} />
                 </p>
             </nav>
             {/* create a canvas give refference to canvasRef */}

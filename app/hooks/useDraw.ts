@@ -6,6 +6,7 @@ import socket from "../components/SocketConnection";
 import { MutableRefObject, RefObject, useEffect, useRef } from "react";
 import {drawModeAtom, roomIDAtom} from "../Atoms/atoms";
 import rough from "roughjs";
+import Lines from "../components/Lines";
 
 export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
   const roomID = useRecoilValue(roomIDAtom);
@@ -20,8 +21,6 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
     mousePosition: mousePositionType;
     roomID: string;
   }
-
-  const Lines: any[] = [];
 
   // Ref to the canvas element
   const canvasRef: RefObject<HTMLCanvasElement> =
@@ -178,6 +177,26 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
             );
             roughCanvas.draw(rectangle);
             break;
+
+          case "circle":
+            // clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // draw all circles
+            Lines.forEach((circle) => {
+              roughCanvas.draw(circle);
+            });
+            const radius = Math.sqrt(
+                Math.pow(mousePosition.x - initialPosition.current.x, 2) + Math.pow(mousePosition.y - initialPosition.current.y, 2)
+            );
+            // draw the current circle
+            const circle = generator.circle(
+                initialPosition.current.x,
+                initialPosition.current.y,
+                radius*2
+            );
+            roughCanvas.draw(circle);
+            break;
+
           default:
             return;
         }
@@ -230,7 +249,27 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
         Lines.forEach((rect) => {
           roughCanvas.draw(rect);
         });
-        break;
+         break;
+
+        case "circle":
+          // radius of circle
+          const radius = Math.sqrt(
+              Math.pow(endCoordinates.x - initialPosition.current.x, 2) + Math.pow(endCoordinates.y - initialPosition.current.y, 2)
+          );
+          // making the final circle to be saved
+          const newCircle = generator.circle(
+              initialPosition.current.x,
+              initialPosition.current.y,
+              radius*2
+          );
+          // save in the db
+          Lines.push(newCircle);
+          // clear the screen and then redraw all shapes
+          ctx?.clearRect(0, 0, canvas.width, canvas.height);
+          //draw all circles
+          Lines.forEach((circle) => {
+            roughCanvas.draw(circle);
+          });
       }
 
       isDrawing.current = false;
