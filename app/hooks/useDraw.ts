@@ -6,7 +6,9 @@ import socket from "../components/SocketConnection";
 import { MutableRefObject, RefObject, useEffect, useRef } from "react";
 import {drawModeAtom, roomIDAtom} from "../Atoms/atoms";
 import rough from "roughjs";
-import Lines from "../components/Lines";
+import {Lines, freeHand} from "../components/Lines";
+
+
 
 export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
   const roomID = useRecoilValue(roomIDAtom);
@@ -15,6 +17,13 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
     x: number;
     y: number;
   }
+
+  interface point {
+    x: number,
+    y: number,
+  }
+
+  const currentPath = useRef<point[]>([]);
 
   interface totalDrawDataType {
     initialPosition: MutableRefObject<mousePositionType | null>;
@@ -120,22 +129,61 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
           roomID,
         };
 
+        const drawExistingFreeHandDrawings = (freeHand: Array<Array<point>>) => {
+          freeHand.forEach((path) => {
+            ctx.beginPath();
+            ctx.lineWidth = 5;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = "black";
+            path.forEach((point, index) => {
+              if (index == 0) {
+                ctx.moveTo(point.x, point.y);
+              } else {
+                ctx.lineTo(point.x, point.y);
+              }
+            });
+            ctx.stroke();
+          });
+        }
+
         switch (drawType) {
           case "free":
-            console.log("Free");
             socket.emit("draw", DrawData);
 
-            /// canvas properties and drawing
+            // save current coordinates
+            currentPath.current.push(mousePosition);
+
+            // clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // draw other shapes
+              Lines.forEach((shape) => {
+                roughCanvas.draw(shape);
+              });
+
+            // draw all freehand drawings from saved
+            drawExistingFreeHandDrawings(freeHand);
+
+            // canvas properties and drawing
             ctx.lineWidth = 5;
             ctx.lineCap = "round";
             ctx.strokeStyle = "black";
 
             // move canvas pointer to initial positions of mousedown and make line to current coordinates
             ctx.beginPath();
-            ctx.moveTo(initialPosition.current.x, initialPosition.current.y);
-            ctx.lineTo(mousePosition?.x ?? 0, mousePosition?.y ?? 0);
+
+            currentPath.current.forEach((point, index) => {
+              if (index == 0) {
+                ctx.moveTo(point.x, point.y);
+              } else {
+                ctx.lineTo(point.x, point.y);
+              }
+            });
             ctx.stroke();
-            ctx.beginPath();
+            // ctx.moveTo(initialPosition.current.x, initialPosition.current.y);
+            // ctx.lineTo(mousePosition?.x ?? 0, mousePosition?.y ?? 0);
+            // ctx.stroke();
+            // ctx.beginPath();
 
             // update the previous coordinates to current (to not make lines everywhere from first coordinate)
             initialPosition.current = {
@@ -143,6 +191,7 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
               y: mousePosition?.y ?? 0,
             };
             break;
+
           case "line":
             console.log("Line");
             // clear canvas
@@ -151,6 +200,9 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
             Lines.forEach((line) => {
               roughCanvas.draw(line);
             });
+
+            drawExistingFreeHandDrawings(freeHand);
+
             // draw the current line
             const line = generator.line(
                 initialPosition.current.x,
@@ -168,6 +220,9 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
             Lines.forEach((rectangle) => {
               roughCanvas.draw(rectangle);
             });
+
+            drawExistingFreeHandDrawings(freeHand);
+
             // draw the current line
             const rectangle = generator.rectangle(
                 initialPosition.current.x,
@@ -185,6 +240,9 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
             Lines.forEach((circle) => {
               roughCanvas.draw(circle);
             });
+
+            drawExistingFreeHandDrawings(freeHand);
+
             const radius = Math.sqrt(
                 Math.pow(mousePosition.x - initialPosition.current.x, 2) + Math.pow(mousePosition.y - initialPosition.current.y, 2)
             );
@@ -213,6 +271,23 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
         y: e.clientY - rect.top,
       };
 
+      const drawExistingFreeHandDrawings = (freeHand: Array<Array<point>>) => {
+        freeHand.forEach((path) => {
+          ctx.beginPath();
+          ctx.lineWidth = 5;
+          ctx.lineCap = "round";
+          ctx.strokeStyle = "black";
+          path.forEach((point, index) => {
+            if (index == 0) {
+              ctx.moveTo(point.x, point.y);
+            } else {
+              ctx.lineTo(point.x, point.y);
+            }
+          });
+          ctx.stroke();
+        });
+      }
+
       switch (drawType) {
         case "line":
         // create a new line using the initial position and end position and add it to the array then refresh the canvas
@@ -231,6 +306,8 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
         Lines.forEach((line) => {
           roughCanvas.draw(line);
         });
+
+        drawExistingFreeHandDrawings(freeHand);
         break;
 
        case "rectangle":
@@ -249,7 +326,22 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
         Lines.forEach((rect) => {
           roughCanvas.draw(rect);
         });
+
+        drawExistingFreeHandDrawings(freeHand);
          break;
+
+         case "free":
+           freeHand.push([...currentPath.current]);
+           currentPath.current = [];
+
+           ctx?.clearRect(0, 0, canvas.width, canvas.height);
+           Lines.forEach((line) => {
+             roughCanvas.draw(line);
+           });
+
+           drawExistingFreeHandDrawings(freeHand);
+
+           break;
 
         case "circle":
           // radius of circle
@@ -270,6 +362,8 @@ export function useDraw(drawType): { canvasRef: RefObject<HTMLCanvasElement> } {
           Lines.forEach((circle) => {
             roughCanvas.draw(circle);
           });
+
+          drawExistingFreeHandDrawings(freeHand);
       }
 
       isDrawing.current = false;

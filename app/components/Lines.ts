@@ -1,3 +1,11 @@
-const Lines: any[] = [];
+import {useRef} from "react";
 
-export default Lines;
+interface point {
+    x: number;
+    y: number;
+}
+
+const Lines: any[] = [];
+const freeHand: Array<Array<point>> = [];
+
+export {Lines, freeHand};
