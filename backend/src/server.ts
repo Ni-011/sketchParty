@@ -15,6 +15,7 @@ interface drawDataType {
   initialPosition: MutableRefObject<mousePositionType | null>;
   mousePosition: mousePositionType;
   roomID: string;
+  drawType: string; // "line", "rectangle", "circle", "freeHand"
 }
 
 const app: Express = express();
@@ -29,7 +30,7 @@ const io = new Server(server, {
 });
 
 app.use(express.json());
-app.use(cors);
+app.use(cors());
 
 app.get("/", (req: Request, res: Response) => {
   res.send("Hello World!");
@@ -48,7 +49,10 @@ io.on("connection", (socket: any) => {
 
   socket.on("draw", (data: drawDataType) => {
     console.log("drawing data sent to all rooms");
-    socket.to(data.roomID).emit("otherUsersDraw", data);
+    socket.to(data.roomID).emit("otherUsersDraw", {
+      ...data,
+      drawType: data.drawType
+    });
   });
 
   socket.on("close", (roomID: any) => {
