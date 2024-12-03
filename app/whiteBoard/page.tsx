@@ -19,15 +19,26 @@ const page = () => {
     const [canvasWidth, setWidth] = useState<number>(window.innerWidth);
     const [canvasHeight, setHeight] = useState<number>(window.innerHeight);
 
+    // Add resize handler
+    useEffect(() => {
+        const handleResize = () => {
+            setWidth(window.innerWidth);
+            setHeight(window.innerHeight);
+        };
+        
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     const handleClose = () => {
         router.push("/");
     socket.emit("close", roomID);
   };
 
     return (
-        <div className="flex flex-col justify-center items-center w-screen h-screen bg-white p-10">
+        <div className="flex flex-col justify-center items-center w-screen h-screen bg-white">
             {/* "items-center" align items vertically */}
-            <nav className="flex w-full justify-between items-center space-x-10 mt-20 p-5">
+            <nav className="flex w-full justify-between items-center space-x-10 p-5">
                 <button onClick={handleClose}>
                     <Image src="/close.svg" alt="close" width={30} height={30}/>
                 </button>
@@ -77,8 +88,13 @@ const page = () => {
             <canvas
                 ref={canvasRef}
                 width={canvasWidth}
-                height={canvasHeight}
+                height={canvasHeight - 100}
                 className="border-black border-5"
+                style={{
+                    width: '100%',
+                    height: 'calc(100vh - 100px)',
+                    touchAction: 'none'
+                }}
             />
         </div>
     );

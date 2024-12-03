@@ -109,35 +109,55 @@ export function useDraw(drawType: any): { canvasRef: RefObject<HTMLCanvasElement
           updateFreeHand(newFreeHand);
 
           const newLines = Lines.filter (shape => {
+            console.log("Shape data:", shape);
+
             // Line
-            if (shape.ops?.[0]?.op === "move" && shape.ops?.[1]?.op === "lineTo") {
-              const start = {x: shape.ops[0].data[0], y: shape.ops[0].data[1]};
-                const end = {x: shape.ops[1].data[0], y: shape.ops[1].data[1]};
-                return !isPointInEraserRadius(start, allCoordinates.mousePosition, eraserRadius) && !isPointInEraserRadius(end, allCoordinates.mousePosition, eraserRadius);
-              }
+            if (shape.shape === "line") {
+              const path = shape.sets[0].ops;
+              const start = {x: path[0].data[0], y: path[0].data[1]};
+              const end = {x: path[1].data[0], y: path[1].data[1]};
+              const isErased = isPointInEraserRadius(start, allCoordinates.mousePosition, eraserRadius) || 
+                               isPointInEraserRadius(end, allCoordinates.mousePosition, eraserRadius);
+              console.log("Line erased:", isErased);
+              return !isErased;
+            }
 
-              // rectangle
-              if (shape.op?.[0].op === "move" && shape.ops?.[1]?.op === "rect") {
-                const x = shape.ops[0].data[0];
-                const y = shape.ops[0].data[1];
-                const width = shape.ops[1].data[2];
-                const height = shape.ops[1].data[3];
-                const corners = [
-                  {x, y},
-                  {x: x + width, y},
-                  {x, y: y + height},
-                  {x: x + width, y: y + height}
-                ]
-                return !corners.some(corner => isPointInEraserRadius(corner, allCoordinates.mousePosition, eraserRadius));
-              }
+            // Rectangle
+            if (shape.shape === "rectangle") {
+              const path = shape.sets[0].ops;
+              const x = path[0].data[0];
+              const y = path[0].data[1];
+              const width = path[1].data[2];
+              const height = path[1].data[3];
+              const corners = [
+                {x, y},
+                {x: x + width, y},
+                {x, y: y + height},
+                {x: x + width, y: y + height}
+              ];
+              const isErased = corners.some(corner => isPointInEraserRadius(corner, allCoordinates.mousePosition, eraserRadius));
+              console.log("Rectangle erased:", isErased);
+              return !isErased;
+            }
 
-              // circle
-              if (shape.ops?.[0]?.op === "move" && shape.ops?.[1]?.op === "circle") {
-                const x = shape.ops[0].data[0];
-                const y = shape.ops[0].data[1];
-                return !isPointInEraserRadius({x: x, y: y}, allCoordinates.mousePosition, eraserRadius);
-              }
-              return true;
+            // Circle
+            if (shape.shape === "circle") {
+              const path = shape.sets[0].ops;
+              const x = path[0].data[0];
+              const y = path[0].data[1];
+              const radius = path[1].data[2] / 2;
+              const points = [
+                {x, y}, // center
+                {x: x + radius, y}, // right
+                {x: x - radius, y}, // left
+                {x, y: y + radius}, // bottom
+                {x, y: y - radius}  // top
+              ];
+              const isErased = points.some(point => isPointInEraserRadius(point, allCoordinates.mousePosition, eraserRadius));
+              console.log("Circle erased:", isErased);
+              return !isErased;
+            }
+            return true;
           })
           updateLines(newLines);
 
@@ -305,66 +325,122 @@ export function useDraw(drawType: any): { canvasRef: RefObject<HTMLCanvasElement
           case "eraser":
             socket.emit("draw", DrawData);
 
-            // removing freehand drawings inside
-            const eraseRadius = 20;
+            const eraserRadius = 20;
+            // Filter freehand
             const newFreeHand = freeHand.filter((path) => {
-              return !path.some(point => isPointInEraserRadius(point, mousePosition, eraseRadius));
+              return !path.some(point => isPointInEraserRadius(point, mousePosition, eraserRadius));
             });
             updateFreeHand(newFreeHand);
 
-            // lines and shapes
-            const newLines = Lines.filter (shape => {
+            // Filter Lines shapes
+            const newLines = Lines.filter(shape => {
+              console.log("Shape being checked:", shape);
+
+              // Helper function to check if a line segment intersects with eraser circle
+              const isLineIntersectingEraser = (x1: number, y1: number, x2: number, y2: number) => {
+                // Get vector between points
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                
+                if (len === 0) return false;
+                
+                // Get closest point on line to eraser center
+                const t = Math.max(0, Math.min(1, (
+                  (mousePosition.x - x1) * dx +
+                  (mousePosition.y - y1) * dy
+                ) / (len * len)));
+                
+                const closestX = x1 + t * dx;
+                const closestY = y1 + t * dy;
+                
+                // Check if closest point is within eraser radius
+                const distance = Math.sqrt(
+                  Math.pow(mousePosition.x - closestX, 2) +
+                  Math.pow(mousePosition.y - closestY, 2)
+                );
+                
+                return distance <= eraserRadius;
+              };
+
               // Line
-              if (shape.ops?.[0]?.op === "move" && shape.ops?.[1]?.op === "lineTo") {
-                const start = {x: shape.ops[0].data[0], y: shape.ops[0].data[1]};
-                const end = {x: shape.ops[1].data[0], y: shape.ops[1].data[1]};
-                return !isPointInEraserRadius(start, mousePosition, eraseRadius) && !isPointInEraserRadius(end, mousePosition, eraseRadius);
+              if (shape.shape === "line") {
+                const path = shape.sets[0].ops;
+                const start = {x: path[0].data[0], y: path[0].data[1]};
+                const end = {x: path[1].data[0], y: path[1].data[1]};
+                
+                return !isLineIntersectingEraser(start.x, start.y, end.x, end.y);
               }
 
               // Rectangle
-              if (shape.ops?.[1]?.op === "rect") {
-                const x = shape.ops[1].data[0];
-                const y = shape.ops[1].data[1];
-                const width = shape.ops[1].data[2];
-                const height = shape.ops[1].data[3];
-                const corners = [
-                  {x, y},
-                  {x: x + width, y},
-                  {x, y: y + height},
-                  {x: x + width, y: y + height}
-                ];
-                return !corners.some(corner => isPointInEraserRadius(corner, mousePosition, eraseRadius));
+              if (shape.shape === "rectangle") {
+                const path = shape.sets[0].ops;
+                const x = path[0].data[0];
+                const y = path[0].data[1];
+                const width = path[1].data[2];
+                const height = path[1].data[3];
+                
+                // Normalize rectangle coordinates (in case width or height is negative)
+                const [rectX, rectWidth] = width >= 0 ? [x, width] : [x + width, -width];
+                const [rectY, rectHeight] = height >= 0 ? [y, height] : [y + height, -height];
+                
+                // Calculate distance from eraser center to nearest point on rectangle
+                const dx = Math.max(rectX - mousePosition.x, 0, mousePosition.x - (rectX + rectWidth));
+                const dy = Math.max(rectY - mousePosition.y, 0, mousePosition.y - (rectY + rectHeight));
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                console.log('Rectangle:', {
+                  x: rectX,
+                  y: rectY,
+                  width: rectWidth,
+                  height: rectHeight,
+                  eraserX: mousePosition.x,
+                  eraserY: mousePosition.y,
+                  distance: distance,
+                  eraserRadius: eraserRadius
+                });
+                
+                // Only erase if the eraser actually touches the rectangle
+                return distance > eraserRadius;
               }
 
               // Circle
-              if (shape.ops?.[1]?.op === "circle") {
-                const x = shape.ops[1].data[0];
-                const y = shape.ops[1].data[1];
-                return !isPointInEraserRadius({x, y}, mousePosition, eraseRadius);
+              if (shape.shape === "circle") {
+                const path = shape.sets[0].ops;
+                const centerX = path[0].data[0];
+                const centerY = path[0].data[1];
+                const shapeRadius = path[1].data[2] / 2;
+                
+                // Distance between circle center and eraser center
+                const distance = Math.sqrt(
+                  Math.pow(mousePosition.x - centerX, 2) +
+                  Math.pow(mousePosition.y - centerY, 2)
+                );
+                
+                return distance > (eraserRadius + shapeRadius);
               }
-              return true;
-            })
 
+              return true;
+            });
             updateLines(newLines);
 
-            // clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // draw all shapes
-            Lines.forEach((shape) => {
-              roughCanvas.draw(shape);
-            });
+            // Clear and redraw
+            if (ctx) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              Lines.forEach(shape => {
+                roughCanvas.draw(shape);
+              });
+              drawExistingFreeHandDrawings(freeHand);
 
-            drawExistingFreeHandDrawings(freeHand);
-
-            // eraser
-            ctx.save();
-            ctx.beginPath();
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 1;
-            ctx.globalCompositeOperation = "destination-out";
-            ctx.arc(mousePosition.x, mousePosition.y, eraseRadius, 0, 2 * Math.PI);
-            ctx.stroke();
-            ctx.restore();
+              // Show eraser cursor
+              ctx.save();
+              ctx.beginPath();
+              ctx.strokeStyle = '#000';
+              ctx.lineWidth = 1;
+              ctx.arc(mousePosition.x, mousePosition.y, eraserRadius, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+            }
             break;
 
           case "free":
