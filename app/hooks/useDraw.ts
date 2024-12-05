@@ -228,6 +228,7 @@ export function useDraw(drawType: any): { canvasRef: RefObject<HTMLCanvasElement
           Lines.forEach((shape) => {
             roughCanvas.draw(shape);
           });
+          drawExistingFreeHandDrawings(freeHand);
 
           // current drawing of other users
           let currShape;

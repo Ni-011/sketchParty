@@ -43,45 +43,67 @@ const page = () => {
                     <Image src="/close.svg" alt="close" width={30} height={30}/>
                 </button>
                 <div className="flex justify-between w-[30%]">
-                    <div onClick={() => {
-                        setDrawType("free")
-                        console.log("free")
-                    }} className="p-4 border-4 border-white hover:bg-gray-200 transition-colors duration-200 rounded-xl cursor-pointer">
-                    <Pen  />
+                    <div 
+                        onClick={() => {
+                            setDrawType("free")
+                            console.log("free")
+                        }} 
+                        className={`p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 rounded-xl cursor-pointer
+                            ${drawType === "free" ? "bg-gray-100" : ""}`}
+                    >
+                        <Pen />
                     </div>
 
-                    <div onClick={() => {
-                        setDrawType("line")
-                        console.log("line")
-                    }} className="p-4 border-4 border-white hover:bg-gray-200 transition-colors duration-200 rounded-xl cursor-pointer">
-                    <Slash  />
+                    <div 
+                        onClick={() => {
+                            setDrawType("line")
+                            console.log("line")
+                        }} 
+                        className={`p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 rounded-xl cursor-pointer
+                            ${drawType === "line" ? "bg-gray-100" : ""}`}
+                    >
+                        <Slash />
                     </div>
 
-                    <div onClick={() => {
-                        setDrawType("rectangle")
-                        console.log("rectangle")
-                    }} className="p-4 border-4 border-white hover:bg-gray-200 transition-colors duration-200 cursor-pointer rounded-xl">
-                    <RectangleHorizontal  />
+                    <div 
+                        onClick={() => {
+                            setDrawType("rectangle")
+                            console.log("rectangle")
+                        }} 
+                        className={`p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 cursor-pointer rounded-xl
+                            ${drawType === "rectangle" ? "bg-gray-100" : ""}`}
+                    >
+                        <RectangleHorizontal />
                     </div>
 
-                    <div onClick={() => {
-                        setDrawType("circle")
-                        console.log("circle")
-                    }} className="p-4 border-4 border-white hover:bg-gray-200 transition-colors duration-200 cursor-pointer rounded-xl">
+                    <div 
+                        onClick={() => {
+                            setDrawType("circle")
+                            console.log("circle")
+                        }} 
+                        className={`p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 cursor-pointer rounded-xl
+                            ${drawType === "circle" ? "bg-gray-100" : ""}`}
+                    >
                         <Circle />
                     </div>
 
-                    <div onClick={() => {
-                        setDrawType("eraser")
-                        console.log("eraser")
-                    }} className="p-4 border-4 border-white hover:bg-gray-200 transition-colors duration-200 cursor-pointer rounded-xl">
+                    <div 
+                        onClick={() => {
+                            setDrawType("eraser")
+                            console.log("eraser")
+                        }} 
+                        className={`p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 cursor-pointer rounded-xl
+                            ${drawType === "eraser" ? "bg-gray-100" : ""}`}
+                    >
                         <Eraser />
                     </div>
                 </div>
-                <p className="flex gap-2">
-                    <b className="text-xl">RoomID: </b>
-                    {roomID}
-                    <Copytext text={roomID} />
+                <p className="flex gap-2 md:flex-row flex-col items-end">
+                    <b className="text-xl whitespace-nowrap">RoomID: </b>
+                    <span className="flex items-center gap-2">
+                        <span className="text-sm md:text-base truncate max-w-[100px] md:max-w-[200px]">{roomID}</span>
+                        <Copytext text={roomID} />
+                    </span>
                 </p>
             </nav>
             {/* create a canvas give refference to canvasRef */}
