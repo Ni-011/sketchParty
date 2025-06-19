@@ -4,10 +4,9 @@ import { useDraw } from "../hooks/useDraw";
 import {drawModeAtom, roomIDAtom} from "../Atoms/atoms";
 import {useRecoilState, useRecoilValue} from "recoil";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import socket from "../components/SocketConnection";
-import {Pen, Slash, RectangleHorizontal, Circle, Eraser, Trash2} from "lucide-react";
+import {Pen, Slash, RectangleHorizontal, Circle, Eraser, Trash2, X} from "lucide-react";
 import {Copytext} from "@/app/components/Copytext";
 
 const WhiteBoard = () => {
@@ -49,8 +48,8 @@ const WhiteBoard = () => {
             <nav className="flex flex-col sm:flex-row w-full justify-between items-center gap-3 sm:gap-5 p-3 sm:p-5">
                 {/* Top row on mobile: Close button and Room ID */}
                 <div className="flex w-full sm:w-auto justify-between sm:justify-start items-center">
-                    <button onClick={handleClose} className="flex-shrink-0">
-                        <Image src="/close.svg" alt="close" width={24} height={24} className="sm:w-[30px] sm:h-[30px]"/>
+                    <button onClick={handleClose} className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200">
+                        <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
                     </button>
                     
                     {/* Room ID - show on mobile in top row */}
