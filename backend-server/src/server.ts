@@ -22,25 +22,22 @@ const port: number = parseInt(process.env.PORT || "8000");
 const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
 
 const server = createServer(app);
-// Allow multiple origins for production and development
-const allowedOrigins = [
-  "http://localhost:3000", // Local development
-  "https://localhost:3000", // Local development with HTTPS
-  process.env.CLIENT_URL, // Production frontend URL from environment variable
-].filter(Boolean); // Remove undefined values
 
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
-    methods: ["GET", "POST"],
-    credentials: true,
+    origin: "*", // Allow all origins
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["*"],
+    credentials: false, // Must be false when origin is "*"
   },
 });
 
 app.use(express.json());
 app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
+  origin: "*", // Allow all origins
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["*"],
+  credentials: false, // Must be false when origin is "*"
 }));
 
 app.get("/", (req: Request, res: Response) => {
