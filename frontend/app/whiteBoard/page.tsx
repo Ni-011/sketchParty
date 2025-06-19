@@ -48,8 +48,8 @@ const WhiteBoard = () => {
             <nav className="flex flex-col sm:flex-row w-full justify-between items-center gap-3 sm:gap-5 p-3 sm:p-5">
                 {/* Top row on mobile: Close button and Room ID */}
                 <div className="flex w-full sm:w-auto justify-between sm:justify-start items-center">
-                    <button onClick={handleClose} className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors duration-200">
-                        <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700" />
+                    <button onClick={handleClose} className="flex-shrink-0 p-3 hover:bg-gray-100 rounded-lg transition-colors duration-200">
+                        <X className="w-8 h-8 sm:w-10 sm:h-10 text-gray-700" />
                     </button>
                     
                     {/* Room ID - show on mobile in top row */}
