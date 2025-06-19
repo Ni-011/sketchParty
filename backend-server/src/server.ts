@@ -4,7 +4,6 @@ import express from "express";
 import { Server } from "socket.io";
 import { createServer, IncomingMessage, ServerResponse } from "http";
 import cors from "cors";
-import { MutableRefObject } from "react";
 
 interface mousePositionType {
   x: number;
@@ -12,28 +11,33 @@ interface mousePositionType {
 }
 
 interface drawDataType {
-  initialPosition: MutableRefObject<mousePositionType | null>;
+  initialPosition: { current: mousePositionType | null };
   mousePosition: mousePositionType;
   roomID: string;
   drawType: string; // "line", "rectangle", "circle", "freeHand"
 }
 
 const app: Express = express();
-const port: number = 8000;
+const port: number = parseInt(process.env.PORT || "8000");
+const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
+
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: [clientUrl, "http://localhost:3000"], // Allow both production and local
     methods: ["GET", "POST"],
     credentials: true,
   },
 });
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: [clientUrl, "http://localhost:3000"], // Allow both production and local
+  credentials: true,
+}));
 
 app.get("/", (req: Request, res: Response) => {
-  res.send("Hello World!");
+  res.send("Sketch Party Backend Server is running!");
 });
 
 const connections: any[] = [];
@@ -53,6 +57,13 @@ io.on("connection", (socket: any) => {
       ...data,
       drawType: data.drawType
     });
+  });
+
+  socket.on("clearAll", (roomID: string) => {
+    console.log(`Clear all request received for room: ${roomID}`);
+    // Emit to all users in the room including the sender
+    io.to(roomID).emit("clearCanvas", true);
+    console.log(`Clear canvas command sent to all users in room: ${roomID}`);
   });
 
   socket.on("close", (roomID: any) => {

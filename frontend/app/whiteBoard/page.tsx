@@ -7,20 +7,24 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import socket from "../components/SocketConnection";
-import {Pen, Slash, RectangleHorizontal, Circle, Eraser} from "lucide-react";
+import {Pen, Slash, RectangleHorizontal, Circle, Eraser, Trash2} from "lucide-react";
 import {Copytext} from "@/app/components/Copytext";
 
-const page = () => {
+const WhiteBoard = () => {
     // accessing the real dom element with a custom hook
     const [drawType, setDrawType] = useState<string>("line");
     const { canvasRef } = useDraw(drawType);
     const roomID = useRecoilValue(roomIDAtom);
     const router = useRouter();
-    const [canvasWidth, setWidth] = useState<number>(window.innerWidth);
-    const [canvasHeight, setHeight] = useState<number>(window.innerHeight);
+    const [canvasWidth, setWidth] = useState<number>(800); // default width
+    const [canvasHeight, setHeight] = useState<number>(600); // default height
 
     // Add resize handler
     useEffect(() => {
+        // Set initial dimensions
+        setWidth(window.innerWidth);
+        setHeight(window.innerHeight);
+        
         const handleResize = () => {
             setWidth(window.innerWidth);
             setHeight(window.innerHeight);
@@ -32,26 +36,44 @@ const page = () => {
 
     const handleClose = () => {
         router.push("/");
-    socket.emit("close", roomID);
-  };
+        socket.emit("close", roomID);
+    };
+
+    const handleClearAll = () => {
+        socket.emit("clearAll", roomID);
+    };
 
     return (
         <div className="flex flex-col justify-center items-center w-screen h-screen bg-white">
-            {/* "items-center" align items vertically */}
-            <nav className="flex w-full justify-between items-center space-x-10 p-5">
-                <button onClick={handleClose}>
-                    <Image src="/close.svg" alt="close" width={30} height={30}/>
-                </button>
-                <div className="flex justify-between w-[30%]">
+            {/* Responsive navbar */}
+            <nav className="flex flex-col sm:flex-row w-full justify-between items-center gap-3 sm:gap-5 p-3 sm:p-5">
+                {/* Top row on mobile: Close button and Room ID */}
+                <div className="flex w-full sm:w-auto justify-between sm:justify-start items-center">
+                    <button onClick={handleClose} className="flex-shrink-0">
+                        <Image src="/close.svg" alt="close" width={24} height={24} className="sm:w-[30px] sm:h-[30px]"/>
+                    </button>
+                    
+                    {/* Room ID - show on mobile in top row */}
+                    <div className="flex sm:hidden gap-2 items-center">
+                        <b className="text-sm whitespace-nowrap">Room: </b>
+                        <span className="flex items-center gap-1">
+                            <span className="text-xs truncate max-w-[80px]">{roomID}</span>
+                            <Copytext text={roomID} />
+                        </span>
+                    </div>
+                </div>
+
+                {/* Tools section - responsive grid */}
+                <div className="flex justify-center gap-2 sm:gap-3 w-full sm:w-auto">
                     <div 
                         onClick={() => {
                             setDrawType("free")
                             console.log("free")
                         }} 
-                        className={`p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 rounded-xl cursor-pointer
+                        className={`p-2 sm:p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 rounded-xl cursor-pointer
                             ${drawType === "free" ? "bg-gray-100" : ""}`}
                     >
-                        <Pen />
+                        <Pen className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
 
                     <div 
@@ -59,10 +81,10 @@ const page = () => {
                             setDrawType("line")
                             console.log("line")
                         }} 
-                        className={`p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 rounded-xl cursor-pointer
+                        className={`p-2 sm:p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 rounded-xl cursor-pointer
                             ${drawType === "line" ? "bg-gray-100" : ""}`}
                     >
-                        <Slash />
+                        <Slash className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
 
                     <div 
@@ -70,10 +92,10 @@ const page = () => {
                             setDrawType("rectangle")
                             console.log("rectangle")
                         }} 
-                        className={`p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 cursor-pointer rounded-xl
+                        className={`p-2 sm:p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 cursor-pointer rounded-xl
                             ${drawType === "rectangle" ? "bg-gray-100" : ""}`}
                     >
-                        <RectangleHorizontal />
+                        <RectangleHorizontal className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
 
                     <div 
@@ -81,10 +103,10 @@ const page = () => {
                             setDrawType("circle")
                             console.log("circle")
                         }} 
-                        className={`p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 cursor-pointer rounded-xl
+                        className={`p-2 sm:p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 cursor-pointer rounded-xl
                             ${drawType === "circle" ? "bg-gray-100" : ""}`}
                     >
-                        <Circle />
+                        <Circle className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
 
                     <div 
@@ -92,19 +114,29 @@ const page = () => {
                             setDrawType("eraser")
                             console.log("eraser")
                         }} 
-                        className={`p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 cursor-pointer rounded-xl
+                        className={`p-2 sm:p-4 border-4 border-white hover:bg-gray-100 transition-colors duration-200 cursor-pointer rounded-xl
                             ${drawType === "eraser" ? "bg-gray-100" : ""}`}
                     >
-                        <Eraser />
+                        <Eraser className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </div>
+
+                    <div 
+                        onClick={handleClearAll} 
+                        className="p-2 sm:p-4 border-4 border-white hover:bg-red-100 hover:border-red-200 transition-colors duration-200 cursor-pointer rounded-xl"
+                        title="Clear All"
+                    >
+                        <Trash2 className="text-red-600 w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                 </div>
-                <p className="flex gap-2 md:flex-row flex-col items-end">
+
+                {/* Room ID section - hidden on mobile, shown on desktop */}
+                <div className="hidden sm:flex gap-2 md:flex-row flex-col items-end">
                     <b className="text-xl whitespace-nowrap">RoomID: </b>
                     <span className="flex items-center gap-2">
                         <span className="text-sm md:text-base truncate max-w-[100px] md:max-w-[200px]">{roomID}</span>
                         <Copytext text={roomID} />
                     </span>
-                </p>
+                </div>
             </nav>
             {/* create a canvas give refference to canvasRef */}
             <canvas
@@ -122,4 +154,4 @@ const page = () => {
     );
 };
 
-export default page;
+export default WhiteBoard;

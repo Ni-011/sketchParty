@@ -271,6 +271,18 @@ export function useDraw(drawType: any): { canvasRef: RefObject<HTMLCanvasElement
       socket.removeAllListeners("otherUsersDraw");
     });
 
+    // handle clear canvas event from other users
+    socket.on("clearCanvas", () => {
+      if (!ctx || !canvas) return;
+      
+      // Clear the canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Clear the stored drawing data
+      updateLines([]);
+      updateFreeHand([]);
+    });
+
     // coordinated inside the eraser
     const isPointInEraserRadius = (point: point, eraser: point, radius: number) => {
       const x = point.x - eraser.x;
@@ -734,8 +746,24 @@ export function useDraw(drawType: any): { canvasRef: RefObject<HTMLCanvasElement
       // important!!
       // wasted a whole day to figure out why other user's drawings were dotted on rejoining room
       socket.off("otherUsersDraw");
+      socket.off("clearCanvas");
     };
-  }, [drawType]);
+  }, [drawType, roomID]);
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    
+    // Clear the canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Clear the stored drawing data
+    updateLines([]);
+    updateFreeHand([]);
+  };
 
   return { canvasRef };
 }

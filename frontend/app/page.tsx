@@ -11,9 +11,9 @@ import { useRecoilState } from "recoil";
 import { roomIDAtom } from "./Atoms/atoms";
 import {Copytext} from "@/app/components/Copytext";
 
-interface pageProps {}
+interface PageProps {}
 
-const page: FC<pageProps> = ({}) => {
+const Page: FC<PageProps> = ({}) => {
   const router = useRouter();
 
   const [UUID, setUUID] = useState<string>("");
@@ -68,4 +68,4 @@ const page: FC<pageProps> = ({}) => {
   );
 };
 
-export default page;
+export default Page;

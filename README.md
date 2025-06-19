@@ -1,44 +1,82 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Sketch Party 🎨
 
-## work in progress, Deployment Soon....
+A real-time collaborative drawing application that allows multiple users to draw together on a shared canvas.
 
-## Getting Started
+## ✨ Features
 
-First, run the development server:
+- **Real-time collaboration** - Draw with others simultaneously
+- **Multiple drawing tools** - Pen, line, rectangle, circle, eraser
+- **Room-based sessions** - Private drawing rooms with unique IDs
+- **Clear all functionality** - Clear the canvas for all users
+- **Responsive design** - Works on desktop, tablet, and mobile
+- **Cross-platform** - Web-based, works on any device with a browser
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 💻 Local Development
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Prerequisites
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Node.js 18+
+- npm or pnpm
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+### Setup
 
-## Demo of project
+1. **Clone the repository**
+   ```bash
+   git clone <your-repo-url>
+   cd sketchParty
+   ```
 
-https://github.com/user-attachments/assets/b175b8b8-b258-4ced-ba2a-82d69568b91f
+2. **Setup Backend**
+   ```bash
+   cd backend-server
+   npm install
+   cp .env.example .env
+   npm start
+   ```
 
+3. **Setup Frontend** (in a new terminal)
+   ```bash
+   cd frontend
+   npm install
+   cp .env.example .env.local
+   npm run dev
+   ```
 
+4. **Open the application**
+   - Frontend: http://localhost:3000
+   - Backend: http://localhost:8000
 
-## Learn More
+## 🛠️ Technologies
 
-To learn more about Next.js, take a look at the following resources:
+### Frontend
+- **Next.js 14** - React framework with app router
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Utility-first CSS framework
+- **Socket.IO Client** - Real-time communication
+- **Recoil** - State management
+- **RoughJS** - Hand-drawn style graphics
+- **Lucide React** - Beautiful icons
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Backend
+- **Express.js** - Web application framework
+- **Socket.IO** - Real-time bidirectional communication
+- **TypeScript** - Type safety
+- **CORS** - Cross-origin resource sharing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## 📱 How to Use
 
-## Deploy on Vercel
+1. **Create or Join a Room** - Each drawing session has a unique room ID
+2. **Choose Your Tool** - Select from pen, line, rectangle, circle, or eraser
+3. **Start Drawing** - Draw on the canvas and see others' drawings in real-time
+4. **Clear Canvas** - Use the clear button to remove all drawings for everyone
+5. **Share Room ID** - Copy and share the room ID for others to join
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🤝 Contributing
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test locally
+5. Submit a pull request
+
+**Happy Drawing!** 🎨✨
