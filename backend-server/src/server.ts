@@ -24,20 +24,29 @@ const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: [clientUrl, "http://localhost:3000"], // Allow both production and local
+    origin: "*", // Temporarily allow all origins for testing
     methods: ["GET", "POST"],
-    credentials: true,
+    credentials: false, // Set to false when using "*"
   },
 });
 
 app.use(express.json());
 app.use(cors({
-  origin: [clientUrl, "http://localhost:3000"], // Allow both production and local
-  credentials: true,
+  origin: "*", // Temporarily allow all origins for testing
+  credentials: false, // Set to false when using "*"
 }));
 
 app.get("/", (req: Request, res: Response) => {
   res.send("Sketch Party Backend Server is running!");
+});
+
+// Health check endpoint for keeping server alive
+app.get("/health", (req: Request, res: Response) => {
+  res.status(200).json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
 });
 
 const connections: any[] = [];
