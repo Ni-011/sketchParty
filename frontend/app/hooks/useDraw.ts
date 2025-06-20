@@ -77,6 +77,24 @@ export function useDraw(drawType: any): { canvasRef: RefObject<HTMLCanvasElement
       }
     };
 
+    // Handle touch start (mobile equivalent of mousedown)
+    const handleTouchStart = (e: TouchEvent): void => {
+      e.preventDefault();
+      isDrawing.current = true;
+      if (!ctx || !canvas) return;
+      const rect: DOMRect = canvas.getBoundingClientRect();
+      const touch = e.touches[0];
+
+      initialPosition.current = {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top,
+      };
+
+      if (drawType === "free") {
+        currentPath.current = [];
+      }
+    };
+
     // display other user's drawings
     socket.on("otherUsersDraw", (allCoordinates: any) => {
 
@@ -577,6 +595,298 @@ export function useDraw(drawType: any): { canvasRef: RefObject<HTMLCanvasElement
       }
     };
 
+    // Handle touch move (mobile equivalent of mousemove)
+    const handleTouchMove = (e: TouchEvent): void => {
+      e.preventDefault();
+      if (!ctx || !canvas) return;
+
+      if (
+        !isDrawing ||
+          initialPosition.current?.x == null ||
+          initialPosition.current?.y == null
+      ) {
+        return;
+      }
+
+      // if touch active, record the coordinates
+      if (isDrawing.current == true) {
+        const touch = e.touches[0];
+        const rect: DOMRect = canvas.getBoundingClientRect();
+        const mousePosition: mousePositionType = {
+          x: touch.clientX - rect.left,
+          y: touch.clientY - rect.top,
+        };
+
+        const DrawData: totalDrawDataType = {
+          initialPosition,
+          mousePosition,
+          roomID,
+          drawType,
+          isCompleted: false
+        };
+
+        const drawExistingFreeHandDrawings = (freeHand: Array<Array<point>>) => {
+          freeHand.forEach((path) => {
+            ctx.beginPath();
+            ctx.lineWidth = 5;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = "black";
+            path.forEach((point, index) => {
+              if (index == 0) {
+                ctx.moveTo(point.x, point.y);
+              } else {
+                ctx.lineTo(point.x, point.y);
+              }
+            });
+            ctx.stroke();
+          });
+        }
+
+        switch (drawType) {
+          case "eraser":
+            socket.emit("draw", DrawData);
+
+            const eraserRadius = 20;
+            // Filter freehand
+            const newFreeHand = freeHand.filter((path) => {
+              return !path.some(point => isPointInEraserRadius(point, mousePosition, eraserRadius));
+            });
+            updateFreeHand(newFreeHand);
+
+            // Filter Lines shapes
+            const newLines = Lines.filter(shape => {
+              console.log("Shape being checked:", shape);
+
+              // Helper function to check if a line segment intersects with eraser circle
+              const isLineIntersectingEraser = (x1: number, y1: number, x2: number, y2: number) => {
+                // Get vector between points
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                
+                if (len === 0) return false;
+                
+                // Get closest point on line to eraser center
+                const t = Math.max(0, Math.min(1, (
+                  (mousePosition.x - x1) * dx +
+                  (mousePosition.y - y1) * dy
+                ) / (len * len)));
+                
+                const closestX = x1 + t * dx;
+                const closestY = y1 + t * dy;
+                
+                // Check if closest point is within eraser radius
+                const distance = Math.sqrt(
+                  Math.pow(mousePosition.x - closestX, 2) +
+                  Math.pow(mousePosition.y - closestY, 2)
+                );
+                
+                return distance <= eraserRadius;
+              };
+
+              // Line
+              if (shape.shape === "line") {
+                const path = shape.sets[0].ops;
+                const start = {x: path[0].data[0], y: path[0].data[1]};
+                const end = {x: path[1].data[0], y: path[1].data[1]};
+                
+                return !isLineIntersectingEraser(start.x, start.y, end.x, end.y);
+              }
+
+              // Rectangle
+              if (shape.shape === "rectangle") {
+                const path = shape.sets[0].ops;
+                const x = path[0].data[0];
+                const y = path[0].data[1];
+                const width = path[1].data[2];
+                const height = path[1].data[3];
+                
+                // Normalize rectangle coordinates (in case width or height is negative)
+                const [rectX, rectWidth] = width >= 0 ? [x, width] : [x + width, -width];
+                const [rectY, rectHeight] = height >= 0 ? [y, height] : [y + height, -height];
+                
+                // Calculate distance from eraser center to nearest point on rectangle
+                const dx = Math.max(rectX - mousePosition.x, 0, mousePosition.x - (rectX + rectWidth));
+                const dy = Math.max(rectY - mousePosition.y, 0, mousePosition.y - (rectY + rectHeight));
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                console.log('Rectangle:', {
+                  x: rectX,
+                  y: rectY,
+                  width: rectWidth,
+                  height: rectHeight,
+                  eraserX: mousePosition.x,
+                  eraserY: mousePosition.y,
+                  distance: distance,
+                  eraserRadius: eraserRadius
+                });
+                
+                // Only erase if the eraser actually touches the rectangle
+                return distance > eraserRadius;
+              }
+
+              // Circle
+              if (shape.shape === "circle") {
+                const path = shape.sets[0].ops;
+                const centerX = path[0].data[0];
+                const centerY = path[0].data[1];
+                const shapeRadius = path[1].data[2] / 2;
+                
+                // Distance between circle center and eraser center
+                const distance = Math.sqrt(
+                  Math.pow(mousePosition.x - centerX, 2) +
+                  Math.pow(mousePosition.y - centerY, 2)
+                );
+                
+                return distance > (eraserRadius + shapeRadius);
+              }
+
+              return true;
+            });
+            updateLines(newLines);
+
+            // Clear and redraw
+            if (ctx) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              Lines.forEach(shape => {
+                roughCanvas.draw(shape);
+              });
+              drawExistingFreeHandDrawings(freeHand);
+
+              // Show eraser cursor
+              ctx.save();
+              ctx.beginPath();
+              ctx.strokeStyle = '#000';
+              ctx.lineWidth = 1;
+              ctx.arc(mousePosition.x, mousePosition.y, eraserRadius, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+            }
+            break;
+
+          case "free":
+            const freeDrawData: totalDrawDataType = {
+              ...DrawData,
+              currentPath: currentPath.current
+            }
+            socket.emit("draw", freeDrawData);
+
+            // save current coordinates
+            currentPath.current.push(mousePosition);
+
+            // clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // draw other shapes
+              Lines.forEach((shape) => {
+                roughCanvas.draw(shape);
+              });
+
+            drawExistingFreeHandDrawings(freeHand);
+
+            // draw current free hand path
+            ctx.beginPath();
+            ctx.lineWidth = 5;
+            ctx.lineCap = "round";
+            ctx.strokeStyle = "black";
+            currentPath.current.forEach((point, index) => {
+              if (index == 0) {
+                ctx.moveTo(point.x, point.y);
+              } else {
+                ctx.lineTo(point.x, point.y);
+              }
+            }); 
+            ctx.stroke();
+            break;
+
+          case "line":
+            socket.emit("draw", DrawData);
+
+            // drawing line with rough.js
+            const currentLine = generator.line(
+              initialPosition.current.x,
+              initialPosition.current.y,
+              mousePosition.x,
+              mousePosition.y
+            );
+
+            // clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // draw all existing lines
+            Lines.forEach((line) => {
+              roughCanvas.draw(line);
+            });
+
+            // draw freehand drawings
+            drawExistingFreeHandDrawings(freeHand);
+
+            // draw current line being dragged
+            roughCanvas.draw(currentLine);
+            break;
+
+          case "rectangle":
+            socket.emit("draw", DrawData);
+
+            // drawing rectangle with rough.js
+            const currentRect = generator.rectangle(
+              initialPosition.current.x,
+              initialPosition.current.y,
+              mousePosition.x - initialPosition.current.x,
+              mousePosition.y - initialPosition.current.y
+            );
+
+            // clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // draw all existing rects
+            Lines.forEach((line) => {
+              roughCanvas.draw(line);
+            });
+
+            // draw freehand drawings
+            drawExistingFreeHandDrawings(freeHand);
+
+            // draw current rect being dragged
+            roughCanvas.draw(currentRect);
+            break;
+
+          case "circle":
+            socket.emit("draw", DrawData);
+
+            // drawing circle with rough.js
+            // radius of circle
+            const radius = Math.sqrt(
+                Math.pow(mousePosition.x - initialPosition.current.x, 2) + Math.pow(mousePosition.y - initialPosition.current.y, 2)
+            );
+            // making the temporary circle
+            const currentCircle = generator.circle(
+                initialPosition.current.x,
+                initialPosition.current.y,
+                radius*2
+            );
+
+            // clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // draw all existing circles
+            Lines.forEach((line) => {
+              roughCanvas.draw(line);
+            });
+
+            // draw freehand drawings
+            drawExistingFreeHandDrawings(freeHand);
+
+            // draw current circle being dragged
+            roughCanvas.draw(currentCircle);
+            break;
+
+          default:
+            return;
+        }
+      }
+    };
+
     // when mouse up, quit drawing
     const handleMouseUp = (e: MouseEvent): void => {
       if (!ctx || !canvas || !initialPosition.current) return;
@@ -717,7 +1027,157 @@ export function useDraw(drawType: any): { canvasRef: RefObject<HTMLCanvasElement
       isDrawing.current = false;
     };
 
+    // Handle touch end (mobile equivalent of mouseup)
+    const handleTouchEnd = (e: TouchEvent): void => {
+      e.preventDefault();
+      if (!ctx || !canvas || !initialPosition.current) return;
+
+      const touch = e.changedTouches[0];
+      const rect: DOMRect = canvas.getBoundingClientRect();
+      
+      // save the coordinates as end position where touch is released
+      const endCoordinates = {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top,
+      };
+
+      const finalDrawData: totalDrawDataType = {
+        initialPosition,
+        mousePosition: endCoordinates,
+        roomID,
+        drawType,
+        isCompleted: true
+      };
+      socket.emit("draw", finalDrawData);
+
+      const drawExistingFreeHandDrawings = (freeHand: Array<Array<point>>) => {
+        freeHand.forEach((path) => {
+          ctx.beginPath();
+          ctx.lineWidth = 5;
+          ctx.lineCap = "round";
+          ctx.strokeStyle = "black";
+          path.forEach((point, index) => {
+            if (index == 0) {
+              ctx.moveTo(point.x, point.y);
+            } else {
+              ctx.lineTo(point.x, point.y);
+            }
+          });
+          ctx.stroke();
+        });
+      }
+
+      switch (drawType) {
+        case "eraser":
+          socket.emit("draw", finalDrawData);
+
+          // clear canvas
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          // draw all shapes
+          Lines.forEach((shape) => {
+            roughCanvas.draw(shape);
+          });
+
+          drawExistingFreeHandDrawings(freeHand);
+          break;
+
+        case "line":
+        // create a new line using the initial position and end position and add it to the array then refresh the canvas
+        const newLine = generator.line(
+          initialPosition.current.x,
+          initialPosition.current.y,
+          endCoordinates.x,
+          endCoordinates.y
+        );
+
+        Lines.push(newLine);
+
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+
+        //draw all lines
+        Lines.forEach((line) => {
+          roughCanvas.draw(line);
+        });
+
+        drawExistingFreeHandDrawings(freeHand);
+        break;
+
+       case "rectangle":
+        const newRect = generator.rectangle(
+          initialPosition.current.x,
+          initialPosition.current.y,
+          endCoordinates.x - initialPosition.current.x,
+          endCoordinates.y - initialPosition.current.y
+        );
+
+        Lines.push(newRect);
+
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+
+        //draw all rect
+        Lines.forEach((rect) => {
+          roughCanvas.draw(rect);
+        });
+
+        drawExistingFreeHandDrawings(freeHand);
+         break;
+
+         case "free":
+          const finalFreeHandData: totalDrawDataType = {
+            initialPosition,
+            mousePosition: endCoordinates,
+            roomID,
+            drawType,
+            isCompleted: true,
+            currentPath: currentPath.current
+          };
+          socket.emit("draw", finalFreeHandData);
+
+           freeHand.push([...currentPath.current]);
+           currentPath.current = [];
+
+           ctx?.clearRect(0, 0, canvas.width, canvas.height);
+           Lines.forEach((line) => {
+             roughCanvas.draw(line);
+           });
+
+           drawExistingFreeHandDrawings(freeHand);
+
+           break;
+
+        case "circle":
+          // radius of circle
+          const radius = Math.sqrt(
+              Math.pow(endCoordinates.x - initialPosition.current.x, 2) + Math.pow(endCoordinates.y - initialPosition.current.y, 2)
+          );
+          // making the final circle to be saved
+          const newCircle = generator.circle(
+              initialPosition.current.x,
+              initialPosition.current.y,
+              radius*2
+          );
+          // save in the db
+          Lines.push(newCircle);
+          // clear the screen and then redraw all shapes
+          ctx?.clearRect(0, 0, canvas.width, canvas.height);
+          //draw all circles
+          Lines.forEach((circle) => {
+            roughCanvas.draw(circle);
+          });
+
+          drawExistingFreeHandDrawings(freeHand);
+      }
+
+      isDrawing.current = false;
+    };
+
     const handleMouseout = (e: MouseEvent): void => {
+      isDrawing.current = false;
+    };
+
+    // Handle touch cancel (when touch is interrupted)
+    const handleTouchCancel = (e: TouchEvent): void => {
+      e.preventDefault();
       isDrawing.current = false;
     };
 
@@ -728,6 +1188,12 @@ export function useDraw(drawType: any): { canvasRef: RefObject<HTMLCanvasElement
         canvas?.addEventListener("mousemove", draw);
         canvas?.addEventListener("mouseup", handleMouseUp);
         canvas?.addEventListener("mouseout", handleMouseout);
+
+        // adding touch event listeners for mobile support
+        canvas?.addEventListener("touchstart", handleTouchStart, { passive: false });
+        canvas?.addEventListener("touchmove", handleTouchMove, { passive: false });
+        canvas?.addEventListener("touchend", handleTouchEnd, { passive: false });
+        canvas?.addEventListener("touchcancel", handleTouchCancel, { passive: false });
       }
     }
 
@@ -736,6 +1202,12 @@ export function useDraw(drawType: any): { canvasRef: RefObject<HTMLCanvasElement
       canvas?.removeEventListener("mousemove", draw);
       canvas?.removeEventListener("mouseup", handleMouseUp);
       canvas?.removeEventListener("mouseout", handleMouseout);
+
+      // removing touch event listeners
+      canvas?.removeEventListener("touchstart", handleTouchStart);
+      canvas?.removeEventListener("touchmove", handleTouchMove);
+      canvas?.removeEventListener("touchend", handleTouchEnd);
+      canvas?.removeEventListener("touchcancel", handleTouchCancel);
     }
 
     attachListeners();
